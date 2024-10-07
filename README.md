@@ -1,2 +1,2 @@
-This is the private repo where I store all my data analysis tools and scripts.
+This is the repo where I store all my data analysis tools and scripts.
 Welcome!
