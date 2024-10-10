@@ -3,12 +3,18 @@ import pandas as pd
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
 from sklearn.feature_extraction.text import TfidfVectorizer
+import glob
 
 def load_data(file_path: str) -> pd.DataFrame:
     """
     Load data from CSV file and return as a pandas DataFrame.
     """
-    return pd.read_csv(file_path)
+    file_paths = glob.glob('data/*.csv')
+    if not file_paths:
+        print('No .csv files found.')
+        return
+    file_path = file_paths[0]
+    return pd.read_csv(file_path, on_bad_lines='skip')
 
 def create_similarity_dict(strings: List[str], threshold: int) -> Dict[str, Set[str]]:
     """
@@ -26,17 +32,17 @@ def create_similarity_dict(strings: List[str], threshold: int) -> Dict[str, Set[
 
 def calculate_similarity(string1: str, string2: str) -> float:
     """
-    Calculate the similarity between two strings using token set ratio.
+    Calculate the similarity between two strings using token sort ratio.
     """
-    token_set1 = set(string1.split())
-    token_set2 = set(string2.split())
+    token_set1 = set(sorted(string1.split()))
+    token_set2 = set(sorted(string2.split()))
     common_tokens = token_set1.intersection(token_set2)
     if len(common_tokens) == 0:
         return 0.0
     else:
         return len(common_tokens) / (len(token_set1) + len(token_set2) - len(common_tokens))
 
-def cluster_strings(strings: List[str], threshold: int, n_clusters: int) -> List[List[str]]:
+def cluster_strings(strings: List[str], n_clusters: int) -> List[List[str]]:
     """
     Cluster strings using hierarchical clustering.
     """
@@ -49,14 +55,13 @@ def cluster_strings(strings: List[str], threshold: int, n_clusters: int) -> List
     return clusters
 
 def main():
-    file_path = "Temas.csv"
     threshold = 0.9
     n_clusters = 10
 
-    data = load_data(file_path)
+    data = load_data()
     strings = data['string'].tolist()
     similarity_dict = create_similarity_dict(strings, threshold)
-    clusters = cluster_strings(strings, threshold, n_clusters)
+    clusters = cluster_strings(strings, n_clusters)
 
     # Print clusters
     df = pd.DataFrame({'Cluster': [i+1 for i in range(len(clusters)) for _ in range(len(clusters[i]))],
