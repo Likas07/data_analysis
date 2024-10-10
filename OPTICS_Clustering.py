@@ -1,6 +1,6 @@
 from typing import List
 import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.cluster import OPTICS
 from sklearn.feature_extraction.text import TfidfVectorizer
 import glob
 
@@ -15,25 +15,31 @@ def load_data() -> pd.DataFrame:
     file_path = file_paths[0]
     return pd.read_csv(file_path, on_bad_lines='skip')
 
-def cluster_strings(strings: List[str], n_clusters: int) -> List[List[str]]:
+def cluster_strings(strings: List[str], min_samples: int = 5, min_dist: float = 0.1) -> List[List[str]]:
     """
-    Cluster strings using KMeans clustering.
+    Cluster strings using OPTICS.
     """
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform(strings).toarray()
 
-    clustering = KMeans(n_clusters=n_clusters)
-    clusters = clustering.fit_predict(vectors)
-    clusters = [[strings[i] for i in range(len(strings)) if clusters[i] == j] for j in range(n_clusters)]
-    return clusters
+    clustering = OPTICS(min_samples=min_samples)
+    labels = clustering.fit_predict(vectors)
+
+    # Create a list of lists, where each inner list represents a cluster
+    clusters = {}
+    for i, label in enumerate(labels):
+        if label not in clusters:
+            clusters[label] = []
+        clusters[label].append(strings[i])
+
+    return list(clusters.values())
 
 def main():
-    threshold = 0.9
-    n_clusters = 10
+    min_samples = 5
 
     data = load_data()
     strings = data['string'].tolist()
-    clusters = cluster_strings(strings, n_clusters)
+    clusters = cluster_strings(strings, min_samples)
 
     # Print clusters
     df = pd.DataFrame({'Cluster': [i+1 for i in range(len(clusters)) for _ in range(len(clusters[i]))],

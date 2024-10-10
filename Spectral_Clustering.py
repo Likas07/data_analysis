@@ -1,6 +1,6 @@
 from typing import List
 import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.cluster import SpectralClustering
 from sklearn.feature_extraction.text import TfidfVectorizer
 import glob
 
@@ -15,21 +15,27 @@ def load_data() -> pd.DataFrame:
     file_path = file_paths[0]
     return pd.read_csv(file_path, on_bad_lines='skip')
 
-def cluster_strings(strings: List[str], n_clusters: int) -> List[List[str]]:
+def cluster_strings(strings: List[str], n_clusters: int = 5) -> List[List[str]]:
     """
-    Cluster strings using KMeans clustering.
+    Cluster strings using Spectral Clustering.
     """
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform(strings).toarray()
 
-    clustering = KMeans(n_clusters=n_clusters)
-    clusters = clustering.fit_predict(vectors)
-    clusters = [[strings[i] for i in range(len(strings)) if clusters[i] == j] for j in range(n_clusters)]
-    return clusters
+    clustering = SpectralClustering(n_clusters=n_clusters)
+    labels = clustering.fit_predict(vectors)
+
+    # Create a list of lists, where each inner list represents a cluster
+    clusters = {}
+    for i, label in enumerate(labels):
+        if label not in clusters:
+            clusters[label] = []
+        clusters[label].append(strings[i])
+
+    return list(clusters.values())
 
 def main():
-    threshold = 0.9
-    n_clusters = 10
+    n_clusters = 6
 
     data = load_data()
     strings = data['string'].tolist()
