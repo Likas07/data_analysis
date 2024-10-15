@@ -30,7 +30,7 @@ def cluster_strings(strings: List[str], n_clusters: int) -> List[List[str]]:
 
 def main():
     threshold = 0.9
-    n_clusters = 10
+    n_clusters = 8
 
     data = load_data()
     strings = data['string'].tolist()

@@ -14,4 +14,11 @@ vez mais eficiente.
 
 Explicar que as ferramentas utilizadas e desenvolvidas serão continuamente refinadas e melhoradas com o uso e feedback.
 
+algumas das ferramentas que podem ser construídas são simuladores para a realização de projeções a longo prazo (Cesinha mencionou questões como crescimento percentual do mercado 
+por x anos e tudo mais) 
+
+As ferramentas desenvolvidas podem ser utilizadas no navegador com interface simples.
+
+No momento estou construindo uma calculadora de elasticidade preço-demanda que será utilizável no navegador.
+
 Mostrar exemplo do data clustering e algoritmo de busca.
