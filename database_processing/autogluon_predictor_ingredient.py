@@ -29,7 +29,7 @@ test_data = TabularDataset(test_data)
 
 # Initialize TabularPredictor
 logger.info("Loading predictor model...")
-predictor = TabularPredictor.load("/home/likas/workspace/github.com/Likas07/data_analysis/test/AutogluonModels/ag-20250106_131351", verbosity = 4)
+predictor = TabularPredictor.load("/home/likas/workspace/github.com/Likas07/data_analysis/database_processing/AutogluonModels/Ingredient_model", verbosity = 4)
 # Time the prediction
 logger.info("Starting prediction on test data...")
 start_time = time.time()

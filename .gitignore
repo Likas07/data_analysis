@@ -1,5 +1,5 @@
-data/
-/data
 *.xlsx
-/data_analysis
-data_analysis/
+*.csv
+AutogluonModels/
+logs/
+tests.py

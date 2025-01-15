@@ -1,29 +1,51 @@
 import streamlit as st
 import subprocess
 import os
+import zipfile
+from io import BytesIO
 
-# Define CSS style for terminal window
-st.markdown(
-    '''
+# Initialize session state for log content
+if 'log_content' not in st.session_state or not isinstance(st.session_state.log_content, list):
+    st.session_state.log_content = []  # Reset to empty list if not already a list
+
+# Create a placeholder for the log window with custom styling
+st.markdown("""
     <style>
-        .terminal {
-            background-color: black;
-            color: white;
-            padding: 10px;
+        /* Import Fira Code font */
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400&display=swap');
+        
+        /* Container for the entire terminal */
+        div[data-testid="stMarkdownContainer"] > div {
+            background-color: transparent !important;
+        }
+        
+        /* Terminal window styling */
+        .terminal-window {
+            background-color: #000000;
+            border: 2px solid #333333;
+            border-radius: 5px;
+            padding: 16px;
+            font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', 'Menlo', 'Monaco', monospace;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 10px 0;
+            min-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
-            height: 300px;
-            border: 1px solid white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        /* Terminal content */
+        .terminal-window pre {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
         }
     </style>
-    ''',
-    unsafe_allow_html=True
-)
-
-# Initialize session state
-if 'log_content' not in st.session_state:
-    st.session_state.log_content = ""
-if 'process_running' not in st.session_state:
-    st.session_state.process_running = False
+""", unsafe_allow_html=True)
 
 # File uploader
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
@@ -31,26 +53,32 @@ uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 # Run button
 run_button = st.button("Run")
 
-# Terminal-like window for logs
-log_placeholder = st.empty()
+# Add a title for the terminal section
+st.markdown("### Terminal Output")
+
+# Create containers for the terminal
+terminal_container = st.container()
+log_placeholder = terminal_container.empty()
 
 # Function to append log lines
 def append_log(line):
-    st.session_state.log_content += line + "<br>"
-    log_placeholder.markdown(f'<pre class="terminal">{st.session_state.log_content}</pre>', unsafe_allow_html=True)
+    st.session_state.log_content.append(f"$ {line}")
+    # Join all log lines with newlines and display in terminal
+    log_content = "\n\n".join(st.session_state.log_content)
+    log_placeholder.markdown(
+        f'<div class="terminal-window"><pre>{log_content}</pre></div>',
+        unsafe_allow_html=True
+    )
+    # Force the container to re-render at the bottom
+    terminal_container.empty()
 
-# Function to run scripts and capture logs
-def run_scripts():
-    st.session_state.process_running = True
-    st.session_state.log_content = ""
-    append_log("Starting script execution...")
-
-    # Save uploaded file
-    if uploaded_file is not None:
-        with open("Dimensions_not_registered.xlsx", "wb") as f:
-            f.write(uploaded_file.getvalue())
-        append_log("File saved successfully.")
-
+# Execute scripts and capture logs
+if run_button and uploaded_file is not None:
+    # Save the uploaded file
+    with open("Dimensions_not_registered.xlsx", "wb") as f:
+        f.write(uploaded_file.getvalue())
+    append_log("File saved successfully.")
+    
     # Run data_preprocess.py
     append_log("Running data_preprocess.py...")
     process = subprocess.Popen(['python', 'data_preprocess.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -61,7 +89,7 @@ def run_scripts():
         if output:
             append_log(output.strip())
     append_log("data_preprocess.py completed.")
-
+    
     # Run autogluon_predictor_ingredient.py
     append_log("Running autogluon_predictor_ingredient.py...")
     process = subprocess.Popen(['python', 'autogluon_predictor_ingredient.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -72,7 +100,7 @@ def run_scripts():
         if output:
             append_log(output.strip())
     append_log("autogluon_predictor_ingredient.py completed.")
-
+    
     # Run autogluon_predictor_trademark.py
     append_log("Running autogluon_predictor_trademark.py...")
     process = subprocess.Popen(['python', 'autogluon_predictor_trademark.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -83,17 +111,10 @@ def run_scripts():
         if output:
             append_log(output.strip())
     append_log("autogluon_predictor_trademark.py completed.")
+    
+    st.success("Processing complete!")
 
-    st.session_state.process_running = False
-
-# Check if run button is clicked
-if run_button and uploaded_file is not None:
-    run_scripts()
-elif run_button:
-    st.warning("Please upload a file before running.")
-
-# Download buttons
-if not st.session_state.process_running:
+    # List of output files
     output_files = [
         'predictions_high_confidence_ingredient.xlsx',
         'predictions_for_review_ingredient.xlsx',
@@ -102,15 +123,23 @@ if not st.session_state.process_running:
         'confidence_distribution_summary.xlsx',
         'confidence_distribution_summary_trademark.xlsx'
     ]
-    for file in output_files:
-        if os.path.exists(file):
-            with open(file, "rb") as f:
-                bytes = f.read()
-            st.download_button(
-                label=f"Download {file}",
-                data=bytes,
-                file_name=file,
-                mime='application/vnd.ms-excel'
-            )
-        else:
-            st.warning(f"{file} not found.")
+
+    # Check if all files exist
+    all_files_exist = all(os.path.exists(file) for file in output_files)
+
+    if all_files_exist:
+        # Create a ZIP archive in memory
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+            for file in output_files:
+                zip_file.write(file, arcname=file)
+        
+        # Provide a download button for the ZIP file
+        st.download_button(
+            label="Download All Files as ZIP",
+            data=zip_buffer.getvalue(),
+            file_name="prediction_results.zip",
+            mime="application/zip"
+        )
+    else:
+        st.warning("Some output files are missing. Please check the logs for errors.")
